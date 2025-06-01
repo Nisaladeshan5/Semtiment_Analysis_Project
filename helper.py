@@ -4,8 +4,6 @@ import re
 import string
 import pickle
 
-import nltk
-nltk.download('stopwords')
 from nltk.stem import PorterStemmer
 ps = PorterStemmer()
 

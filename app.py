@@ -1,22 +1,32 @@
-import streamlit as st
+from flask import Flask, render_template,request, redirect
 from helper import preprocessing, vectorizer, get_prediction
 from logger import logging
 
-# Initialize session state
-if "reviews" not in st.session_state:
-    st.session_state.reviews = []
-if "positive" not in st.session_state:
-    st.session_state.positive = 0
-if "negative" not in st.session_state:
-    st.session_state.negative = 0
+app = Flask(__name__)
 
-st.title("Sentiment Analysis")
+logging.info('Flask server started')
 
-text = st.text_area("Enter your review here:")
-if st.button("Analyze"):
+data = dict()
+reviews = []
+positive = 0
+negative = 0
+
+@app.route("/")
+def index():
+    data['reviews'] = reviews
+    data['positive'] = positive
+    data['negative'] = negative
+
+    logging.info('========== Open home page ============')
+
+    return render_template('index.html', data=data)
+
+@app.route("/", methods = ['post'])
+def my_post():
+    text = request.form['text']
     logging.info(f'Text : {text}')
 
-    preprocessed_txt = preprocessing(text).tolist()  # <-- Convert to list
+    preprocessed_txt = preprocessing(text)
     logging.info(f'Preprocessed Text : {preprocessed_txt}')
 
     vectorized_txt = vectorizer(preprocessed_txt)
@@ -26,19 +36,14 @@ if st.button("Analyze"):
     logging.info(f'Prediction : {prediction}')
 
     if prediction == 'negative':
-        st.session_state.negative += 1
-        st.error("Prediction: Negative")
+        global negative
+        negative += 1
     else:
-        st.session_state.positive += 1
-        st.success("Prediction: Positive")
+        global positive
+        positive += 1
+    
+    reviews.insert(0, text)
+    return redirect(request.url)
 
-    st.session_state.reviews.insert(0, text)
-
-# Show results
-st.subheader("Summary")
-st.write(f"Positive Reviews: {st.session_state.positive}")
-st.write(f"Negative Reviews: {st.session_state.negative}")
-
-st.subheader("Recent Reviews")
-for review in st.session_state.reviews[:5]:
-    st.write(f"• {review}")
+if __name__ == "__main__":
+    app.run()
