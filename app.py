@@ -1,32 +1,22 @@
-from flask import Flask, render_template,request, redirect
+import streamlit as st
 from helper import preprocessing, vectorizer, get_prediction
 from logger import logging
 
-app = Flask(__name__)
+# Initialize session state
+if "reviews" not in st.session_state:
+    st.session_state.reviews = []
+if "positive" not in st.session_state:
+    st.session_state.positive = 0
+if "negative" not in st.session_state:
+    st.session_state.negative = 0
 
-logging.info('Flask server started')
+st.title("Sentiment Analysis")
 
-data = dict()
-reviews = []
-positive = 0
-negative = 0
-
-@app.route("/")
-def index():
-    data['reviews'] = reviews
-    data['positive'] = positive
-    data['negative'] = negative
-
-    logging.info('========== Open home page ============')
-
-    return render_template('index.html', data=data)
-
-@app.route("/", methods = ['post'])
-def my_post():
-    text = request.form['text']
+text = st.text_area("Enter your review here:")
+if st.button("Analyze"):
     logging.info(f'Text : {text}')
 
-    preprocessed_txt = preprocessing(text)
+    preprocessed_txt = preprocessing(text).tolist()  # <-- Convert to list
     logging.info(f'Preprocessed Text : {preprocessed_txt}')
 
     vectorized_txt = vectorizer(preprocessed_txt)
@@ -36,14 +26,19 @@ def my_post():
     logging.info(f'Prediction : {prediction}')
 
     if prediction == 'negative':
-        global negative
-        negative += 1
+        st.session_state.negative += 1
+        st.error("Prediction: Negative")
     else:
-        global positive
-        positive += 1
-    
-    reviews.insert(0, text)
-    return redirect(request.url)
+        st.session_state.positive += 1
+        st.success("Prediction: Positive")
 
-if __name__ == "__main__":
-    app.run()
+    st.session_state.reviews.insert(0, text)
+
+# Show results
+st.subheader("Summary")
+st.write(f"Positive Reviews: {st.session_state.positive}")
+st.write(f"Negative Reviews: {st.session_state.negative}")
+
+st.subheader("Recent Reviews")
+for review in st.session_state.reviews[:5]:
+    st.write(f"• {review}")
